@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Smart Timetable AI</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <i class="fa-solid fa-calendar-check"></i> Timetable AI
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="#" class="active" onclick="switchTab('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+                <li><a href="#" onclick="switchTab('ai-generator')"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Generator</a></li>
+                <li><a href="#" onclick="switchTab('timetable')"><i class="fa-solid fa-table"></i> Timetable</a></li>
+                <li><a href="#" onclick="switchTab('homework')"><i class="fa-solid fa-book"></i> Homework</a></li>
+                <li><a href="#" onclick="switchTab('assignments')"><i class="fa-solid fa-file-alt"></i> Assignments</a></li>
+                <li><a href="#" onclick="switchTab('exams')"><i class="fa-solid fa-graduation-cap"></i> Exams</a></li>
+                <li><a href="#" onclick="switchTab('attendance')"><i class="fa-solid fa-user-check"></i> Attendance</a></li>
+                <li><a href="#" onclick="switchTab('settings')"><i class="fa-solid fa-gear"></i> Settings</a></li>
+                <li><a href="#" id="logoutBtn"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a></li>
+            </ul>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <h2>Welcome, <span id="welcome-user">Preetish</span>! 👋</h2>
+                <div class="topbar-actions">
+                    <div style="position: relative;">
+                        <input type="text" placeholder="Search..." class="form-group input" style="padding: 0.5rem; border-radius: 20px; border: 1px solid var(--border); margin-bottom:0;">
+                    </div>
+                    <button class="icon-btn" onclick="showNotifications()"><i class="fa-regular fa-bell"></i></button>
+                    <button class="icon-btn" id="themeToggle"><i class="fa-regular fa-moon"></i></button>
+                </div>
+            </div>
+
+            <div id="tab-dashboard" class="tab-content">
+                <div class="dashboard-grid">
+                    <div class="widget card-lift">
+                        <div class="widget-header">
+                            <span><i class="fa-solid fa-quote-left text-primary"></i> Daily Motivation</span>
+                        </div>
+                        <p id="quote-text" style="font-style: italic; color: var(--text-muted);">"The secret of getting ahead is getting started."</p>
+                    </div>
+
+                    <div class="widget card-lift">
+                        <div class="widget-header">
+                            <span>Study Progress</span>
+                            <span class="badge badge-success">On Track</span>
+                        </div>
+                        <p>Goal: 4 Hours / Day</p>
+                        <div class="progress-container">
+                            <div class="progress-bar" style="width: 65%;"></div>
+                        </div>
+                        <p style="text-align: right; font-size: 0.8rem; margin-top: 5px;">2.6 hrs completed</p>
+                    </div>
+
+                    <div class="widget card-lift">
+                        <div class="widget-header">
+                            <span>Upcoming Deadlines</span>
+                        </div>
+                        <div id="dashboard-deadlines">
+                            <div class="list-item"><span>Math Assignment</span> <span class="badge badge-warning">Tomorrow</span></div>
+                            <div class="list-item"><span>Science Project</span> <span class="badge badge-danger">Due Today</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 2rem 0 1rem 0;">Today's Timetable</h3>
+                <div class="widget">
+                    <table class="data-table" id="today-timetable-table">
+                        <thead>
+                            <tr><th>Time</th><th>Subject</th><th>Type</th></tr>
+                        </thead>
+                        <tbody id="today-timetable-body">
+                            <tr><td>09:00 AM - 10:00 AM</td><td>Mathematics</td><td>Study Block</td></tr>
+                            <tr><td>10:15 AM - 11:15 AM</td><td>Science</td><td>Revision</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-ai-generator" class="tab-content" style="display: none;">
+                <h3>AI Timetable Generator</h3>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Let the AI build your perfect study schedule.</p>
+                <div class="widget" style="max-width: 600px;">
+                    <form id="ai-generator-form">
+                        <div class="form-group">
+                            <label>Subjects (Comma separated)</label>
+                            <input type="text" id="ai-subjects" placeholder="e.g. Math, Science, English, History" required>
+                        </div>
+                        <div class="grid-3" style="padding:0; gap:1rem;">
+                            <div class="form-group">
+                                <label>Study Hours/Day</label>
+                                <input type="number" id="ai-hours" min="1" max="12" value="4" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Wake-up Time</label>
+                                <input type="time" id="ai-wake" value="07:00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Sleep Time</label>
+                                <input type="time" id="ai-sleep" value="22:30" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Preferred Difficulty Handling</label>
+                            <select id="ai-difficulty">
+                                <option value="balanced">Balanced</option>
+                                <option value="hard-first">Tackle Hardest Subjects First</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Timetable</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="tab-homework" class="tab-content" style="display: none;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+                    <h3>Homework Manager</h3>
+                    <button class="btn-primary" onclick="toggleForm('homework-form')">+ Add Homework</button>
+                </div>
+                <div id="homework-form" class="widget" style="display:none; margin-bottom:1rem;">
+                    <form id="add-hw-form">
+                        <div class="form-group"><input type="text" id="hw-title" placeholder="Homework Title" required></div>
+                        <div class="form-group"><input type="text" id="hw-subject" placeholder="Subject" required></div>
+                        <div class="form-group"><input type="date" id="hw-due" required></div>
+                        <button type="submit" class="btn-primary">Save</button>
+                    </form>
+                </div>
+                <div class="dashboard-grid" id="homework-container">
+                    </div>
+            </div>
+
+            <div id="tab-assignments" class="tab-content" style="display: none;"><h3>Assignments</h3><div id="assignments-container"></div></div>
+            <div id="tab-exams" class="tab-content" style="display: none;"><h3>Upcoming Exams</h3><div id="exams-container"></div></div>
+            <div id="tab-attendance" class="tab-content" style="display: none;">
+                <h3>Attendance Tracker</h3>
+                <div class="dashboard-grid" id="attendance-container">
+                    </div>
+            </div>
+            
+            <div id="tab-settings" class="tab-content" style="display: none;">
+                <h3>Settings</h3>
+                <div class="widget" style="max-width:400px; margin-top:1rem;">
+                    <div class="form-group">
+                        <label>Dark Mode</label>
+                        <button class="btn-outline" onclick="document.getElementById('themeToggle').click()">Toggle Theme</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <script src="../static/js/app.js"></script>
+    <script src="../static/js/dashboard.js"></script>
+</body>
+</html>
