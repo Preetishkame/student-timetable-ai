@@ -151,7 +151,7 @@ def get_authenticated_user_id():
 @app.route("/register", methods=["POST"])
 def register():
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
@@ -194,7 +194,7 @@ def register():
 @app.route("/login", methods=["POST"])
 def login():
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     username = data.get("username", "").strip()
     password = data.get("password", "").strip()
