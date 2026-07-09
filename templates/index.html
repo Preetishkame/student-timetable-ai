@@ -1,58 +1,294 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
     <title>Smart Timetable AI</title>
-    <link rel="stylesheet" href="../static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 </head>
+
 <body>
-    <nav class="navbar">
-        <div class="logo"><i class="fa-solid fa-calendar-check"></i> Smart Timetable AI</div>
-        <div class="nav-links">
-            <a href="#features">Features</a>
-            <a href="#about">About</a>
-            <a href="/login-page" class="btn-outline">Login</a>
-            <a href="/register-page" class="btn-primary">Register</a>
+
+<nav class="navbar">
+
+    <div class="logo">
+
+        <i class="fa-solid fa-calendar-check"></i>
+
+        Smart Timetable AI
+
+    </div>
+
+    <div class="nav-links">
+
+        <a href="#features">Features</a>
+
+        <a href="#about">About</a>
+
+        <a href="/login"
+           class="btn-outline">
+
+            Login
+
+        </a>
+
+        <a href="/register"
+           class="btn-primary">
+
+            Register
+
+        </a>
+
+    </div>
+
+</nav>
+
+
+
+<header class="hero">
+
+    <div class="hero-content">
+
+        <h1>
+
+            Smart Timetable AI
+
+        </h1>
+
+        <p>
+
+            Plan your studies intelligently with AI.
+            Manage subjects, homework, assignments,
+            exams and attendance in one place.
+
+        </p>
+
+        <div class="hero-buttons">
+
+            <a href="/register"
+               class="btn-primary btn-large">
+
+                Get Started
+
+            </a>
+
+            <a href="/login"
+               class="btn-outline btn-large">
+
+                Login
+
+            </a>
+
         </div>
-    </nav>
 
-    <header class="hero section-animate">
-        <div class="hero-content">
-            <h1>Smart Timetable AI</h1>
-            <p>An AI-powered study planner that automatically creates personalized study schedules, manages homework, assignments, exams, and attendance.</p>
-            <div class="hero-buttons">
-                <a href="/register-page" class="btn-primary btn-large">Get Started</a>
-            </div>
+    </div>
+
+</header>
+
+
+
+<section id="features"
+         class="features">
+
+    <h2>
+
+        Features
+
+    </h2>
+
+    <div class="grid-3">
+
+        <div class="card">
+
+            <i class="fa-solid fa-robot fa-2x"></i>
+
+            <h3>
+
+                AI Timetable
+
+            </h3>
+
+            <p>
+
+                Automatically generate a balanced
+                timetable based on your subjects
+                and study hours.
+
+            </p>
+
         </div>
-    </header>
 
-    <section id="features" class="features section-animate">
-        <h2>Powerful Features for Students</h2>
-        <div class="grid-3">
-            <div class="card card-lift">
-                <i class="fa-solid fa-brain fa-2x text-primary"></i>
-                <h3>AI Timetable</h3>
-                <p>Generate optimized study schedules based on your subjects, difficulty, and available hours.</p>
-            </div>
-            <div class="card card-lift">
-                <i class="fa-solid fa-book-open fa-2x text-primary"></i>
-                <h3>Homework & Assignments</h3>
-                <p>Never miss a deadline. Track all your tasks in one unified dashboard.</p>
-            </div>
-            <div class="card card-lift">
-                <i class="fa-solid fa-chart-pie fa-2x text-primary"></i>
-                <h3>Attendance Tracker</h3>
-                <p>Keep your attendance in the safe zone with visual indicators and warnings.</p>
-            </div>
+        <div class="card">
+
+            <i class="fa-solid fa-book-open fa-2x"></i>
+
+            <h3>
+
+                Homework & Assignments
+
+            </h3>
+
+            <p>
+
+                Track homework,
+                assignments,
+                deadlines
+                and completion status.
+
+            </p>
+
         </div>
-    </section>
 
-    <footer>
-        <p>&copy; 2026 Smart Timetable AI. All rights reserved.</p>
-    </footer>
+        <div class="card">
 
-    <script src="../static/js/app.js"></script>
+            <i class="fa-solid fa-user-check fa-2x"></i>
+
+            <h3>
+
+                Attendance
+
+            </h3>
+
+            <p>
+
+                Calculate attendance,
+                monitor percentage,
+                and know how many classes
+                are required to reach 75%.
+
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <i class="fa-solid fa-graduation-cap fa-2x"></i>
+
+            <h3>
+
+                Exams
+
+            </h3>
+
+            <p>
+
+                Store upcoming exams,
+                view countdowns,
+                and prepare efficiently.
+
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <i class="fa-solid fa-chart-line fa-2x"></i>
+
+            <h3>
+
+                Dashboard
+
+            </h3>
+
+            <p>
+
+                View all your statistics,
+                progress,
+                attendance,
+                homework,
+                and exams
+                from one screen.
+
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <i class="fa-solid fa-cloud fa-2x"></i>
+
+            <h3>
+
+                Secure Data
+
+            </h3>
+
+            <p>
+
+                Your information is stored safely
+                using Flask Sessions
+                and SQLite.
+
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<section id="about"
+         class="about">
+
+    <h2>
+
+        About Smart Timetable AI
+
+    </h2>
+
+    <p>
+
+        Smart Timetable AI is a student productivity
+        platform developed using
+        Python,
+        Flask,
+        SQLite,
+        HTML,
+        CSS
+        and JavaScript.
+
+        It helps students manage their
+        daily study routine efficiently.
+
+    </p>
+
+</section>
+
+
+
+<footer>
+
+    <p>
+
+        © 2026 Smart Timetable AI
+
+    </p>
+
+    <p>
+
+        Developed by Preetish
+
+    </p>
+
+</footer>
+
+
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
 </body>
+
 </html>

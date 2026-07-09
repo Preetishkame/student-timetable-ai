@@ -1,38 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Smart Timetable AI</title>
-    <link rel="stylesheet" href="../static/css/style.css">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Register | Smart Timetable AI</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 </head>
+
 <body>
-    <div class="auth-container">
-        <div class="auth-box">
-            <h2 style="margin-bottom: 1.5rem; text-align: center;">Create Account</h2>
-            <form id="registerForm">
-                <div class="form-group">
-                    <label for="reg-username">Username</label>
-                    <input type="text" id="reg-username" required placeholder="Choose a username">
-                </div>
-                <div class="form-group">
-                    <label for="reg-password">Password</label>
-                    <input type="password" id="reg-password" required placeholder="Create a password">
-                </div>
-                <div class="form-group">
-                    <label for="reg-confirm">Confirm Password</label>
-                    <input type="password" id="reg-confirm" required placeholder="Confirm your password">
-                </div>
-                <button type="submit" class="btn-primary" style="width: 100%;">Register</button>
-            </form>
-            <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted);">
-                Already have an account? <a href="/login-page" class="text-primary">Login</a>
+
+<div class="auth-container">
+
+    <div class="auth-box">
+
+        <div class="auth-header">
+
+            <i class="fa-solid fa-user-plus fa-3x"></i>
+
+            <h2>
+
+                Create Account
+
+            </h2>
+
+            <p>
+
+                Join Smart Timetable AI
+
             </p>
+
         </div>
+
+
+
+        <form
+            id="registerForm"
+            method="POST"
+            action="/register">
+
+            <div class="form-group">
+
+                <label>
+
+                    Full Name
+
+                </label>
+
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    placeholder="Enter your full name"
+                    required>
+
+            </div>
+
+
+
+            <div class="form-group">
+
+                <label>
+
+                    Email
+
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    required>
+
+            </div>
+
+
+
+            <div class="form-group">
+
+                <label>
+
+                    Password
+
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Create password"
+                    required>
+
+            </div>
+
+
+
+            <div class="form-group">
+
+                <label>
+
+                    Confirm Password
+
+                </label>
+
+                <input
+                    type="password"
+                    id="confirm_password"
+                    name="confirm_password"
+                    placeholder="Confirm password"
+                    required>
+
+            </div>
+
+
+
+            <button
+                type="submit"
+                class="btn-primary">
+
+                <i class="fa-solid fa-user-check"></i>
+
+                Create Account
+
+            </button>
+
+        </form>
+
+
+
+        <div class="auth-footer">
+
+            Already have an account?
+
+            <a href="/login">
+
+                Login
+
+            </a>
+
+        </div>
+
     </div>
 
-    <div class="toast-container" id="toastContainer"></div>
-    <script src="../static/js/app.js"></script>
-    <script src="../static/js/auth.js"></script>
+</div>
+
+
+
+<div
+    id="toastContainer"
+    class="toast-container">
+
+</div>
+
+
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+
 </body>
+
 </html>

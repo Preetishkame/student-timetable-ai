@@ -68,7 +68,7 @@ Smart-Timetable-AI/
 ### Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Smart-Timetable-AI.git
+git clone https://github.com/Preetishkame/student-timetable-ai.git
 ```
 
 Go to the project folder
@@ -92,7 +92,7 @@ python app.py
 Open your browser
 
 ```
-http://127.0.0.1:5000
+https://student-timetable-ai.onrender.com/
 ```
 
 ---

@@ -1,72 +1,143 @@
-const API_BASE = "http://127.0.0.1:5000"; // Adjust if your Flask port is different
+// ======================================
+// AUTH.JS
+// Student Timetable AI
+// ======================================
 
-// Login Handler
-const loginForm = document.getElementById('loginForm');
+// ------------------------------
+// LOGIN
+// ------------------------------
+
+const loginForm = document.getElementById("loginForm");
+
 if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
+
+    loginForm.addEventListener("submit", async function(e){
+
         e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
 
-        showToast("Logging in...", "loading");
+        const formData = new FormData(loginForm);
 
-        try {
-            const response = await fetch("/login", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+        try{
+
+            const response = await fetch("/login",{
+
+                method:"POST",
+                body:formData
+
             });
 
-            const data = await response.json();
+            if(response.redirected){
 
-            if (response.ok) {
-                localStorage.setItem("user_id", data.user_id);
-                localStorage.setItem("username", username); // Save username for welcome msg
-                showToast("Login successful!", "success");
-                setTimeout(() => window.location.href = "/dashboard", 1000);
-            } else {
-                showToast(data.error || data.message || "Invalid credentials", "error");
+                window.location.href = response.url;
+                return;
+
             }
-        } catch (error) {
-            console.error("Login error:", error);
-            showToast("Network failure. Backend might be down.", "error");
+
+            alert("Invalid email or password.");
+
         }
+
+        catch(err){
+
+            console.error(err);
+
+            alert("Unable to login.");
+
+        }
+
     });
+
 }
 
-// Register Handler
-const registerForm = document.getElementById('registerForm');
+
+
+// ------------------------------
+// REGISTER
+// ------------------------------
+
+const registerForm = document.getElementById("registerForm");
+
 if (registerForm) {
-    registerForm.addEventListener('submit', async (e) => {
+
+    registerForm.addEventListener("submit", async function (e) {
+
         e.preventDefault();
-        const username = document.getElementById('reg-username').value;
-        const password = document.getElementById('reg-password').value;
-        const confirm = document.getElementById('reg-confirm').value;
 
-        if (password !== confirm) {
-            showToast("Passwords do not match!", "error");
-            return;
-        }
+        const submitBtn = registerForm.querySelector("button[type='submit']");
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
+        submitBtn.disabled = true;
 
-        showToast("Creating account...", "loading");
+        const formData = new FormData(registerForm);
 
         try {
+
             const response = await fetch("/register", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                method: "POST",
+                body: formData
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
-                showToast("Registration successful! Please login.", "success");
-                setTimeout(() => window.location.href = "/login-page", 1500);
-            } else {
-                showToast(data.error || data.message || "Invalid credentials", "error");
+            let data;
+            try {
+                data = await response.json();
+            } catch {
+                data = { success: false, message: "Unexpected server response." };
             }
-        } catch (error) {
-            showToast("Network failure. Backend might be down.", "error");
+
+            if (data.success) {
+
+                showToast
+                    ? showToast("Registration Successful! Redirecting to login...", "success")
+                    : alert("Registration Successful!");
+
+                setTimeout(() => {
+                    window.location.href = "/login";
+                }, 1200);
+
+            } else {
+
+                showToast
+                    ? showToast(data.message || "Registration Failed.", "error")
+                    : alert(data.message || "Registration Failed.");
+
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+
+            }
+
+        } catch (err) {
+
+            console.error(err);
+            showToast
+                ? showToast("Network error. Please try again.", "error")
+                : alert("Unable to register. Please check your connection.");
+
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+
         }
+
     });
+
+}
+
+
+
+// ------------------------------
+// LOGOUT
+// ------------------------------
+
+const logoutBtn =
+document.getElementById("logoutBtn");
+
+if(logoutBtn){
+
+    logoutBtn.addEventListener("click", async ()=>{
+
+        await fetch("/logout");
+
+        window.location.href="/login";
+
+    });
+
 }

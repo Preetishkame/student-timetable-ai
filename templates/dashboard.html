@@ -1,164 +1,1423 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Smart Timetable AI</title>
-    <link rel="stylesheet" href="../static/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard | Smart Timetable AI</title>
+
+    <meta name="description"
+          content="Smart AI-powered student timetable, assignment, homework, exam and attendance manager.">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 </head>
+
 <body>
-    <div class="dashboard-layout">
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <i class="fa-solid fa-calendar-check"></i> Timetable AI
-            </div>
-            <ul class="sidebar-menu">
-                <li><a href="#" class="active" onclick="switchTab('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</a></li>
-                <li><a href="#" onclick="switchTab('ai-generator')"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Generator</a></li>
-                <li><a href="#" onclick="switchTab('timetable')"><i class="fa-solid fa-table"></i> Timetable</a></li>
-                <li><a href="#" onclick="switchTab('homework')"><i class="fa-solid fa-book"></i> Homework</a></li>
-                <li><a href="#" onclick="switchTab('assignments')"><i class="fa-solid fa-file-alt"></i> Assignments</a></li>
-                <li><a href="#" onclick="switchTab('exams')"><i class="fa-solid fa-graduation-cap"></i> Exams</a></li>
-                <li><a href="#" onclick="switchTab('attendance')"><i class="fa-solid fa-user-check"></i> Attendance</a></li>
-                <li><a href="#" onclick="switchTab('settings')"><i class="fa-solid fa-gear"></i> Settings</a></li>
-                <li><a href="#" id="logoutBtn"><i class="fa-solid fa-arrow-right-from-bracket"></i> Logout</a></li>
-            </ul>
-        </aside>
 
-        <main class="main-content">
-            <div class="topbar">
-                <h2>Welcome, <span id="welcome-user">Preetish</span>! 👋</h2>
-                <div class="topbar-actions">
-                    <div style="position: relative;">
-                        <input type="text" placeholder="Search..." class="form-group input" style="padding: 0.5rem; border-radius: 20px; border: 1px solid var(--border); margin-bottom:0;">
-                    </div>
-                    <button class="icon-btn" onclick="showNotifications()"><i class="fa-regular fa-bell"></i></button>
-                    <button class="icon-btn" id="themeToggle"><i class="fa-regular fa-moon"></i></button>
+<!-- =========================================
+     APP SHELL
+========================================= -->
+
+<div class="app-shell">
+
+
+    <!-- =========================================
+         SIDEBAR
+    ========================================= -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-logo">
+
+            <i class="fa-solid fa-brain"></i>
+
+            <span>Smart AI</span>
+
+        </div>
+
+        <nav>
+
+            <a href="#"
+               data-tab="tab-dashboard"
+               class="active">
+
+                <i class="fa-solid fa-house"></i>
+
+                Dashboard
+
+            </a>
+
+            <a href="#"
+               data-tab="tab-ai-generator">
+
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+
+                AI Timetable
+
+            </a>
+
+            <a href="#"
+               data-tab="tab-homework">
+
+                <i class="fa-solid fa-book"></i>
+
+                Homework
+
+            </a>
+
+            <a href="#"
+               data-tab="tab-assignments">
+
+                <i class="fa-solid fa-file-lines"></i>
+
+                Assignments
+
+            </a>
+
+            <a href="#"
+               data-tab="tab-exams">
+
+                <i class="fa-solid fa-graduation-cap"></i>
+
+                Exams
+
+            </a>
+
+            <a href="#"
+               data-tab="tab-attendance">
+
+                <i class="fa-solid fa-user-check"></i>
+
+                Attendance
+
+            </a>
+
+            <a href="#"
+               data-tab="tab-settings">
+
+                <i class="fa-solid fa-gear"></i>
+
+                Settings
+
+            </a>
+
+        </nav>
+
+    </aside>
+
+
+    <!-- =========================================
+         MAIN CONTENT
+    ========================================= -->
+
+    <main class="main-content">
+
+    <!-- =========================
+         TOP HEADER
+    ========================== -->
+
+    <header class="topbar">
+
+        <div>
+
+            <h2>
+                Welcome,
+                <span id="welcome-user">
+                    Loading...
+                </span>
+                👋
+            </h2>
+
+            <p id="today-date"></p>
+
+        </div>
+
+        <div class="topbar-actions">
+
+            <input
+                type="text"
+                id="searchBox"
+                placeholder="Search Subjects..."
+            >
+
+            <button
+                class="icon-btn"
+                id="refreshDashboard"
+                title="Refresh Dashboard">
+
+                <i class="fa-solid fa-rotate-right"></i>
+
+            </button>
+
+            <button
+                class="icon-btn"
+                id="themeToggle">
+
+                <i class="fa-solid fa-moon"></i>
+
+            </button>
+
+            <button
+                class="icon-btn"
+                id="logoutBtn">
+
+                <i class="fa-solid fa-right-from-bracket"></i>
+
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =========================
+         DASHBOARD TAB
+    ========================== -->
+
+    <section
+        id="tab-dashboard"
+        class="tab-content">
+
+        <div class="dashboard-grid">
+
+
+            <!-- USER CARD -->
+
+            <div class="widget">
+
+                <div class="widget-header">
+
+                    <h3>
+
+                        <i class="fa-solid fa-user"></i>
+
+                        Student
+
+                    </h3>
+
                 </div>
+
+                <h2 id="studentName">
+
+                    Loading...
+
+                </h2>
+
+                <p>
+
+                    Smart Timetable AI Dashboard
+
+                </p>
+
             </div>
 
-            <div id="tab-dashboard" class="tab-content">
-                <div class="dashboard-grid">
-                    <div class="widget card-lift">
-                        <div class="widget-header">
-                            <span><i class="fa-solid fa-quote-left text-primary"></i> Daily Motivation</span>
-                        </div>
-                        <p id="quote-text" style="font-style: italic; color: var(--text-muted);">"The secret of getting ahead is getting started."</p>
-                    </div>
 
-                    <div class="widget card-lift">
-                        <div class="widget-header">
-                            <span>Study Progress</span>
-                            <span class="badge badge-success">On Track</span>
-                        </div>
-                        <p>Goal: 4 Hours / Day</p>
-                        <div class="progress-container">
-                            <div class="progress-bar" style="width: 65%;"></div>
-                        </div>
-                        <p style="text-align: right; font-size: 0.8rem; margin-top: 5px;">2.6 hrs completed</p>
-                    </div>
 
-                    <div class="widget card-lift">
-                        <div class="widget-header">
-                            <span>Upcoming Deadlines</span>
-                        </div>
-                        <div id="dashboard-deadlines">
-                            <div class="list-item"><span>Math Assignment</span> <span class="badge badge-warning">Tomorrow</span></div>
-                            <div class="list-item"><span>Science Project</span> <span class="badge badge-danger">Due Today</span></div>
-                        </div>
-                    </div>
+            <!-- SUBJECTS -->
+
+            <div class="widget">
+
+                <div class="widget-header">
+
+                    <h3>
+
+                        <i class="fa-solid fa-book"></i>
+
+                        Subjects
+
+                    </h3>
+
                 </div>
 
-                <h3 style="margin: 2rem 0 1rem 0;">Today's Timetable</h3>
-                <div class="widget">
-                    <table class="data-table" id="today-timetable-table">
-                        <thead>
-                            <tr><th>Time</th><th>Subject</th><th>Type</th></tr>
-                        </thead>
-                        <tbody id="today-timetable-body">
-                            <tr><td>09:00 AM - 10:00 AM</td><td>Mathematics</td><td>Study Block</td></tr>
-                            <tr><td>10:15 AM - 11:15 AM</td><td>Science</td><td>Revision</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                <h1 id="subjectCount">
+
+                    0
+
+                </h1>
+
             </div>
 
-            <div id="tab-ai-generator" class="tab-content" style="display: none;">
-                <h3>AI Timetable Generator</h3>
-                <p style="color: var(--text-muted); margin-bottom: 2rem;">Let the AI build your perfect study schedule.</p>
-                <div class="widget" style="max-width: 600px;">
-                    <form id="ai-generator-form">
-                        <div class="form-group">
-                            <label>Subjects (Comma separated)</label>
-                            <input type="text" id="ai-subjects" placeholder="e.g. Math, Science, English, History" required>
-                        </div>
-                        <div class="grid-3" style="padding:0; gap:1rem;">
-                            <div class="form-group">
-                                <label>Study Hours/Day</label>
-                                <input type="number" id="ai-hours" min="1" max="12" value="4" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Wake-up Time</label>
-                                <input type="time" id="ai-wake" value="07:00" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Sleep Time</label>
-                                <input type="time" id="ai-sleep" value="22:30" required>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Preferred Difficulty Handling</label>
-                            <select id="ai-difficulty">
-                                <option value="balanced">Balanced</option>
-                                <option value="hard-first">Tackle Hardest Subjects First</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn-primary"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Timetable</button>
-                    </form>
+
+
+            <!-- ASSIGNMENTS -->
+
+            <div class="widget">
+
+                <div class="widget-header">
+
+                    <h3>
+
+                        <i class="fa-solid fa-file-lines"></i>
+
+                        Assignments
+
+                    </h3>
+
                 </div>
+
+                <h1 id="assignmentCount">
+
+                    0
+
+                </h1>
+
             </div>
 
-            <div id="tab-homework" class="tab-content" style="display: none;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
-                    <h3>Homework Manager</h3>
-                    <button class="btn-primary" onclick="toggleForm('homework-form')">+ Add Homework</button>
+
+
+            <!-- HOMEWORK -->
+
+            <div class="widget">
+
+                <div class="widget-header">
+
+                    <h3>
+
+                        <i class="fa-solid fa-book-open"></i>
+
+                        Homework
+
+                    </h3>
+
                 </div>
-                <div id="homework-form" class="widget" style="display:none; margin-bottom:1rem;">
-                    <form id="add-hw-form">
-                        <div class="form-group"><input type="text" id="hw-title" placeholder="Homework Title" required></div>
-                        <div class="form-group"><input type="text" id="hw-subject" placeholder="Subject" required></div>
-                        <div class="form-group"><input type="date" id="hw-due" required></div>
-                        <button type="submit" class="btn-primary">Save</button>
-                    </form>
-                </div>
-                <div class="dashboard-grid" id="homework-container">
-                    </div>
+
+                <h1 id="homeworkCount">
+
+                    0
+
+                </h1>
+
             </div>
 
-            <div id="tab-assignments" class="tab-content" style="display: none;"><h3>Assignments</h3><div id="assignments-container"></div></div>
-            <div id="tab-exams" class="tab-content" style="display: none;"><h3>Upcoming Exams</h3><div id="exams-container"></div></div>
-            <div id="tab-attendance" class="tab-content" style="display: none;">
-                <h3>Attendance Tracker</h3>
-                <div class="dashboard-grid" id="attendance-container">
-                    </div>
+
+
+            <!-- EXAMS -->
+
+            <div class="widget">
+
+                <div class="widget-header">
+
+                    <h3>
+
+                        <i class="fa-solid fa-graduation-cap"></i>
+
+                        Exams
+
+                    </h3>
+
+                </div>
+
+                <h1 id="examCount">
+
+                    0
+
+                </h1>
+
             </div>
-            
-            <div id="tab-settings" class="tab-content" style="display: none;">
-                <h3>Settings</h3>
-                <div class="widget" style="max-width:400px; margin-top:1rem;">
+
+
+
+            <!-- ATTENDANCE -->
+
+            <div class="widget">
+
+                <div class="widget-header">
+
+                    <h3>
+
+                        <i class="fa-solid fa-user-check"></i>
+
+                        Attendance
+
+                    </h3>
+
+                </div>
+
+                <h1>
+
+                    <span id="attendancePercent">
+
+                        0
+
+                    </span>%
+
+                </h1>
+
+                <div class="progress-container">
+
+                    <div
+
+                        id="attendanceBar"
+
+                        class="progress-bar"
+
+                        style="width:0%;">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- ====================
+             TODAY TIMETABLE
+        ===================== -->
+
+        <div class="widget">
+
+            <div class="widget-header">
+
+                <h3>
+
+                    <i class="fa-solid fa-calendar-days"></i>
+
+                    Today's Timetable
+
+                </h3>
+
+            </div>
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Time</th>
+
+                        <th>Subject</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="todayTimetable">
+
+                    <tr>
+
+                        <td colspan="2">
+
+                            No timetable generated.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+
+        <!-- ====================
+             UPCOMING EXAMS
+        ===================== -->
+
+        <div class="widget">
+
+            <div class="widget-header">
+
+                <h3>
+
+                    <i class="fa-solid fa-clock"></i>
+
+                    Upcoming Exams
+
+                </h3>
+
+            </div>
+
+            <div id="upcomingExams">
+
+                No upcoming exams.
+
+            </div>
+
+        </div>
+
+
+
+        <!-- ====================
+             PENDING ASSIGNMENTS
+        ===================== -->
+
+        <div class="widget">
+
+            <div class="widget-header">
+
+                <h3>
+
+                    <i class="fa-solid fa-list-check"></i>
+
+                    Pending Assignments
+
+                </h3>
+
+            </div>
+
+            <div id="pendingAssignments">
+
+                No pending assignments.
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- =========================================
+     AI TIMETABLE GENERATOR
+    ========================================= -->
+
+    <section id="tab-ai-generator"
+             class="tab-content"
+             style="display:none;">
+
+        <div class="page-header">
+
+            <h2>
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                Smart AI Timetable Generator
+            </h2>
+
+            <p>
+                Add your subjects and let AI generate your daily study timetable.
+            </p>
+
+        </div>
+
+
+        <div class="widget">
+
+            <form id="subjectForm">
+
+                <div class="form-group">
+
+                    <label>Subject Name</label>
+
+                    <input
+                        type="text"
+                        id="subjectName"
+                        placeholder="Example: Mathematics"
+                        required>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>Difficulty</label>
+
+                    <select id="difficulty">
+
+                        <option value="Easy">Easy</option>
+
+                        <option value="Medium">
+                            Medium
+                        </option>
+
+                        <option value="Hard">
+                            Hard
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>Study Hours</label>
+
+                    <input
+                        type="number"
+                        id="studyHours"
+                        min="1"
+                        max="6"
+                        value="2"
+                        required>
+
+                </div>
+
+
+                <button
+                    class="btn-primary"
+                    type="submit">
+
+                    <i class="fa-solid fa-plus"></i>
+
+                    Add Subject
+
+                </button>
+
+            </form>
+
+        </div>
+
+
+
+        <div class="widget">
+
+            <div class="widget-header">
+
+                <h3>
+
+                    Added Subjects
+
+                </h3>
+
+            </div>
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Subject</th>
+
+                        <th>Difficulty</th>
+
+                        <th>Hours</th>
+
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="subjectTable">
+
+                    <tr>
+
+                        <td colspan="4">
+
+                            No subjects added.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+
+        <div class="widget">
+
+            <div class="widget-header">
+
+                <h3>
+
+                    Generate Timetable
+
+                </h3>
+
+            </div>
+
+            <p>
+
+                Click the button below to automatically create your timetable.
+
+            </p>
+
+            <button
+                id="generateBtn"
+                class="btn-primary">
+
+                <i class="fa-solid fa-robot"></i>
+
+                Generate AI Timetable
+
+            </button>
+
+        </div>
+
+
+
+        <div class="widget">
+
+            <div class="widget-header">
+
+                <h3>
+
+                    Generated Timetable
+
+                </h3>
+
+            </div>
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Day</th>
+
+                        <th>Subject</th>
+
+                        <th>Start</th>
+
+                        <th>End</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="generatedTable">
+
+                    <tr>
+
+                        <td colspan="4">
+
+                            Generate a timetable first.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+    <!-- =========================================
+         HOMEWORK
+    ========================================= -->
+
+    <section id="tab-homework"
+             class="tab-content"
+             style="display:none;">
+
+        <div class="page-header">
+
+            <h2>
+                <i class="fa-solid fa-book"></i>
+                Homework Manager
+            </h2>
+
+            <button
+                class="btn-primary"
+                onclick="toggleForm('homeworkForm')">
+
+                <i class="fa-solid fa-plus"></i>
+
+                Add Homework
+
+            </button>
+
+        </div>
+
+
+        <div
+            id="homeworkForm"
+            class="widget"
+            style="display:none;">
+
+            <form id="addHomeworkForm">
+
+                <div class="form-group">
+
+                    <label>Homework Title</label>
+
+                    <input
+                        type="text"
+                        id="hwTitle"
+                        required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Subject</label>
+
+                    <input
+                        type="text"
+                        id="hwSubject"
+                        required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Due Date</label>
+
+                    <input
+                        type="date"
+                        id="hwDue"
+                        required>
+
+                </div>
+
+                <button
+                    class="btn-primary"
+                    type="submit">
+
+                    Save Homework
+
+                </button>
+
+            </form>
+
+        </div>
+
+
+        <div class="widget">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Title</th>
+                        <th>Subject</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="homeworkTable">
+
+                    <tr>
+
+                        <td colspan="5">
+
+                            No homework available.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+
+
+    <!-- =========================================
+         ASSIGNMENTS
+    ========================================= -->
+
+    <section id="tab-assignments"
+             class="tab-content"
+             style="display:none;">
+
+        <div class="page-header">
+
+            <h2>
+
+                <i class="fa-solid fa-file-lines"></i>
+
+                Assignment Manager
+
+            </h2>
+
+            <button
+                class="btn-primary"
+                onclick="toggleForm('assignmentForm')">
+
+                <i class="fa-solid fa-plus"></i>
+
+                Add Assignment
+
+            </button>
+
+        </div>
+
+
+
+        <div
+            id="assignmentForm"
+            class="widget"
+            style="display:none;">
+
+            <form id="addAssignmentForm">
+
+                <div class="form-group">
+
+                    <label>Assignment Title</label>
+
+                    <input
+                        type="text"
+                        id="assignmentTitle"
+                        required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Subject</label>
+
+                    <input
+                        type="text"
+                        id="assignmentSubject"
+                        required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Due Date</label>
+
+                    <input
+                        type="date"
+                        id="assignmentDue"
+                        required>
+
+                </div>
+
+                <button
+                    class="btn-primary"
+                    type="submit">
+
+                    Save Assignment
+
+                </button>
+
+            </form>
+
+        </div>
+
+
+
+        <div class="widget">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Title</th>
+                        <th>Subject</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="assignmentTable">
+
+                    <tr>
+
+                        <td colspan="5">
+
+                            No assignments available.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+    <!-- =========================================
+         EXAMS
+    ========================================= -->
+
+    <section id="tab-exams"
+             class="tab-content"
+             style="display:none;">
+
+        <div class="page-header">
+
+            <h2>
+                <i class="fa-solid fa-graduation-cap"></i>
+                Exam Manager
+            </h2>
+
+            <button
+                class="btn-primary"
+                onclick="toggleForm('examForm')">
+
+                <i class="fa-solid fa-plus"></i>
+
+                Add Exam
+
+            </button>
+
+        </div>
+
+
+        <div
+            id="examForm"
+            class="widget"
+            style="display:none;">
+
+            <form id="addExamForm">
+
+                <div class="form-group">
+
+                    <label>Subject</label>
+
+                    <input
+                        type="text"
+                        id="examSubject"
+                        required>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label>Exam Date</label>
+
+                    <input
+                        type="date"
+                        id="examDate"
+                        required>
+
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn-primary">
+
+                    Save Exam
+
+                </button>
+
+            </form>
+
+        </div>
+
+
+
+        <div class="widget">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Subject</th>
+                        <th>Date</th>
+                        <th>Days Left</th>
+                        <th>Status</th>
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="examTable">
+
+                    <tr>
+
+                        <td colspan="5">
+
+                            No exams added.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================
+         ATTENDANCE
+    ========================================= -->
+
+    <section id="tab-attendance"
+             class="tab-content"
+             style="display:none;">
+
+        <div class="page-header">
+
+            <h2>
+
+                <i class="fa-solid fa-user-check"></i>
+
+                Attendance Tracker
+
+            </h2>
+
+        </div>
+
+
+
+        <div class="dashboard-grid">
+
+
+            <!-- INPUT -->
+
+            <div class="widget">
+
+                <h3>Update Attendance</h3>
+
+                <form id="attendanceForm">
+
                     <div class="form-group">
-                        <label>Dark Mode</label>
-                        <button class="btn-outline" onclick="document.getElementById('themeToggle').click()">Toggle Theme</button>
+
+                        <label>Classes Attended</label>
+
+                        <input
+                            type="number"
+                            id="attended"
+                            min="0"
+                            required>
+
                     </div>
-                </div>
+
+                    <div class="form-group">
+
+                        <label>Total Classes</label>
+
+                        <input
+                            type="number"
+                            id="totalClasses"
+                            min="0"
+                            required>
+
+                    </div>
+
+                    <button
+                        class="btn-primary"
+                        type="submit">
+
+                        Save Attendance
+
+                    </button>
+
+                </form>
+
             </div>
 
-        </main>
+
+
+            <!-- RESULT -->
+
+            <div class="widget">
+
+                <h3>Attendance Report</h3>
+
+                <br>
+
+                <h1>
+
+                    <span id="attendancePercentage">
+
+                        0
+
+                    </span>%
+
+                </h1>
+
+                <div class="progress-container">
+
+                    <div
+                        class="progress-bar"
+                        id="attendanceProgress"
+                        style="width:0%;">
+
+                    </div>
+
+                </div>
+
+                <br>
+
+                <p>
+
+                    <strong>Status:</strong>
+
+                    <span id="attendanceStatus">
+
+                        No Data
+
+                    </span>
+
+                </p>
+
+                <p>
+
+                    <strong>Classes Needed for 75%:</strong>
+
+                    <span id="classesNeeded">
+
+                        0
+
+                    </span>
+
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- HISTORY -->
+
+        <div class="widget">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Attended</th>
+                        <th>Total</th>
+                        <th>Percentage</th>
+                        <th>Status</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="attendanceHistory">
+
+                    <tr>
+
+                        <td colspan="4">
+
+                            No attendance data available.
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+    <!-- =========================================
+         SETTINGS
+    ========================================= -->
+
+    <section id="tab-settings"
+             class="tab-content"
+             style="display:none;">
+
+        <div class="page-header">
+
+            <h2>
+
+                <i class="fa-solid fa-gear"></i>
+
+                Settings
+
+            </h2>
+
+        </div>
+
+        <div class="dashboard-grid">
+
+            <!-- ACCOUNT -->
+
+            <div class="widget">
+
+                <h3>
+
+                    <i class="fa-solid fa-user"></i>
+
+                    Account
+
+                </h3>
+
+                <br>
+
+                <p>
+
+                    <strong>Name :</strong>
+
+                    <span id="profileName">
+
+                        Loading...
+
+                    </span>
+
+                </p>
+
+                <p>
+
+                    <strong>Email :</strong>
+
+                    <span id="profileEmail">
+
+                        Loading...
+
+                    </span>
+
+                </p>
+
+            </div>
+
+
+            <!-- THEME -->
+
+            <div class="widget">
+
+                <h3>
+
+                    <i class="fa-solid fa-palette"></i>
+
+                    Appearance
+
+                </h3>
+
+                <br>
+
+                <button
+                    class="btn-primary"
+                    id="settingsThemeToggle">
+
+                    🌙 Toggle Dark Mode
+
+                </button>
+
+            </div>
+
+
+            <!-- LOGOUT -->
+
+            <div class="widget">
+
+                <h3>
+
+                    <i class="fa-solid fa-right-from-bracket"></i>
+
+                    Session
+
+                </h3>
+
+                <br>
+
+                <button
+                    class="btn-danger"
+                    id="settingsLogoutBtn">
+
+                    Logout
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================
+         TOAST NOTIFICATION
+    ========================================= -->
+
+    <div
+        id="toastContainer"
+        class="toast-container">
+
     </div>
 
-    <div class="toast-container" id="toastContainer"></div>
-    <script src="../static/js/app.js"></script>
-    <script src="../static/js/dashboard.js"></script>
+
+
+    <!-- =========================================
+         LOADING OVERLAY
+    ========================================= -->
+
+    <div
+        id="loadingScreen"
+        class="loading-screen"
+        style="display:none;">
+
+        <div class="loader"></div>
+
+        <p>
+
+            Loading...
+
+        </p>
+
+    </div>
+
+
+
+    <!-- =========================================
+         FOOTER
+    ========================================= -->
+
+    <footer class="dashboard-footer">
+
+        <p>
+
+            © 2026 Smart Timetable AI
+
+        </p>
+
+        <p>
+
+            Made with ❤️ using Flask &amp; SQLite
+
+        </p>
+
+    </footer>
+
+    </main>
+
+</div>
+
+
+
+<!-- =========================================
+     JAVASCRIPT
+========================================= -->
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
 </body>
+
 </html>
