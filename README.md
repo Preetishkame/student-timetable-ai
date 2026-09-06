@@ -65,37 +65,13 @@ Smart-Timetable-AI/
 
 ## ⚙️ Installation
 
-### Clone the repository
-
-```bash
-git clone https://github.com/Preetishkame/student-timetable-ai.git
-```
-
-Go to the project folder
-
-```bash
-cd Smart-Timetable-AI
-```
-
-Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the application
-
-```bash
-python app.py
-```
-
 Open your browser
 
 ```
 https://student-timetable-ai.onrender.com/
 ```
 
----
+
 
 ## 💻 Screens
 
@@ -153,7 +129,7 @@ SQLite is used to store:
 ## 👨‍💻 Author
 
 **Preetish**
-
+PM Shri KV Andrews ganj New Delhi
 Class 10 Student
 
 ---
