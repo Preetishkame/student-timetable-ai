@@ -129,6 +129,7 @@ SQLite is used to store:
 ## 👨‍💻 Author
 
 **Preetish**
+
 PM Shri KV Andrews ganj New Delhi
 Class 10 Student
 
