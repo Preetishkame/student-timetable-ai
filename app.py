@@ -1,197 +1,228 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-import sqlite3
-import os
 from functools import wraps
 from datetime import datetime
+import os
+import re
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except ImportError:
+    psycopg2 = None
 
 app = Flask(__name__)
-app.secret_key = "student_timetable_ai_secret_key"
+app.secret_key = os.environ.get("SECRET_KEY", "student_timetable_ai_secret_key")
 
-DATABASE = "student_timetable.db"
+# Render PostgreSQL provides DATABASE_URL automatically when the database is linked.
+# Local development can also use DATABASE_URL from a .env/environment variable.
+def get_database_url():
+    """Return a normalized PostgreSQL connection URL."""
+    database_url = os.environ.get("DATABASE_URL", "").strip()
 
+    if not database_url:
+        raise RuntimeError(
+            "DATABASE_URL is not set. Please configure the DATABASE_URL "
+            "environment variable."
+        )
 
-# -------------------------------
-# DATABASE CONNECTION
-# -------------------------------
+    if database_url.startswith("postgres://"):
+        database_url = "postgresql://" + database_url[len("postgres://"):]
+
+    return database_url 
+
 
 def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Open a PostgreSQL connection and return it with dictionary-like rows."""
+    if psycopg2 is None:
+        raise RuntimeError("psycopg2 is not installed. Add psycopg2-binary to requirements.txt.")
+
+    return psycopg2.connect(
+        get_database_url(),
+        cursor_factory=RealDictCursor,
+        sslmode=os.environ.get("PGSSLMODE", "require")
+    )
+
+
+def query_one(sql, params=()):
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchone()
+    finally:
+        conn.close()
+
+
+def query_all(sql, params=()):
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+
+def execute(sql, params=(), fetchone=False):
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            result = cur.fetchone() if fetchone else None
+        conn.commit()
+        return result
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 # -------------------------------
 # CREATE TABLES
 # -------------------------------
-
 def init_db():
-
     conn = get_db()
-    cur = conn.cursor()
-
-    # USERS
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    # SUBJECTS
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS subjects(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        subject_name TEXT,
-        difficulty TEXT,
-        study_hours REAL,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )
-    """)
-
-    # TIMETABLE
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS timetable(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        day TEXT,
-        start_time TEXT,
-        end_time TEXT,
-        subject TEXT,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )
-    """)
-
-    # ASSIGNMENTS
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS assignments(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        title TEXT,
-        subject TEXT,
-        due_date TEXT,
-        status TEXT DEFAULT 'Pending',
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )
-    """)
-
-    # HOMEWORK
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS homework(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        title TEXT,
-        subject TEXT,
-        due_date TEXT,
-        status TEXT DEFAULT 'Pending',
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )
-    """)
-
-    # EXAMS
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS exams(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        subject TEXT,
-        exam_date TEXT,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )
-    """)
-
-    # ATTENDANCE
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS attendance(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        attended INTEGER DEFAULT 0,
-        total INTEGER DEFAULT 0,
-        FOREIGN KEY(user_id) REFERENCES users(id)
-    )
-    """)
-
-    conn.commit()
-    conn.close()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id BIGSERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    email TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS subjects (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    subject_name TEXT,
+                    difficulty TEXT,
+                    study_hours DOUBLE PRECISION
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS timetable (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    day TEXT,
+                    start_time TEXT,
+                    end_time TEXT,
+                    subject TEXT
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS assignments (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    title TEXT,
+                    subject TEXT,
+                    due_date TEXT,
+                    status TEXT DEFAULT 'Pending'
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS homework (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    title TEXT,
+                    subject TEXT,
+                    due_date TEXT,
+                    status TEXT DEFAULT 'Pending'
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS exams (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    subject TEXT,
+                    exam_date TEXT
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS attendance (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    attended INTEGER DEFAULT 0,
+                    total INTEGER DEFAULT 0
+                )
+            """)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 # -------------------------------
 # LOGIN REQUIRED
 # -------------------------------
-
 def login_required(f):
-
     @wraps(f)
     def wrapper(*args, **kwargs):
-
         if "user_id" not in session:
             return redirect(url_for("login"))
-
         return f(*args, **kwargs)
-
     return wrapper
+
+
+def clean_email(email):
+    return (email or "").strip().lower()
+
+
+def date_info(value):
+    today = datetime.now().date()
+    try:
+        due = datetime.strptime(value, "%Y-%m-%d").date()
+        return (due - today).days, due < today
+    except (TypeError, ValueError):
+        return None, False
 
 
 # -------------------------------
 # HOME
 # -------------------------------
-
 @app.route("/")
 def index():
-
     if "user_id" in session:
         return redirect(url_for("dashboard"))
-
     return render_template("index.html")
 
 
 # -------------------------------
 # REGISTER
 # -------------------------------
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
-
     if request.method == "POST":
-
-        name = request.form.get("name")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
+        name = (request.form.get("name") or "").strip()
+        email = clean_email(request.form.get("email"))
+        password = request.form.get("password") or ""
+        confirm_password = request.form.get("confirm_password") or ""
 
         if not name or not email or not password:
             return jsonify({"success": False, "message": "Please fill all fields."}), 400
-
         if password != confirm_password:
             return jsonify({"success": False, "message": "Passwords do not match."}), 400
-
         if len(password) < 6:
             return jsonify({"success": False, "message": "Password must be at least 6 characters."}), 400
 
-        conn = get_db()
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT * FROM users WHERE email=?",
-            (email,)
-        )
-
-        if cur.fetchone():
-            conn.close()
+        existing = query_one("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+        if existing:
             return jsonify({"success": False, "message": "An account with this email already exists."}), 409
 
         hashed = generate_password_hash(password)
-
-        cur.execute("""
-        INSERT INTO users(name,email,password)
-        VALUES(?,?,?)
-        """, (name, email, hashed))
-
-        conn.commit()
-        conn.close()
+        try:
+            execute(
+                "INSERT INTO users(name, email, password) VALUES(%s, %s, %s)",
+                (name, email, hashed)
+            )
+        except psycopg2.errors.UniqueViolation:
+            return jsonify({"success": False, "message": "An account with this email already exists."}), 409
 
         return jsonify({"success": True, "message": "Registration Successful!"})
 
@@ -201,32 +232,18 @@ def register():
 # -------------------------------
 # LOGIN
 # -------------------------------
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
-
     if request.method == "POST":
+        email = clean_email(request.form.get("email"))
+        password = request.form.get("password") or ""
 
-        email = request.form.get("email")
-        password = request.form.get("password")
-
-        conn = get_db()
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT * FROM users WHERE email=?",
-            (email,)
-        )
-
-        user = cur.fetchone()
-
-        conn.close()
+        user = query_one("SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
 
         if user and check_password_hash(user["password"], password):
-
+            session.clear()
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
-
             return redirect(url_for("dashboard"))
 
         flash("Invalid email or password.")
@@ -237,44 +254,29 @@ def login():
 # -------------------------------
 # LOGOUT
 # -------------------------------
-
 @app.route("/logout")
 @login_required
 def logout():
-
     session.clear()
-
     return redirect(url_for("login"))
 
 
 # -------------------------------
 # DASHBOARD
 # -------------------------------
-
 @app.route("/dashboard")
 @login_required
 def dashboard():
-
-    return render_template(
-        "dashboard.html",
-        username=session["user_name"]
-    )
+    return render_template("dashboard.html", username=session["user_name"])
 
 
 # -------------------------------
-# API : USER INFO
+# USER INFO
 # -------------------------------
-
 @app.route("/api/user")
 @login_required
 def user_info():
-
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT email FROM users WHERE id=?", (session["user_id"],))
-    row = cur.fetchone()
-    conn.close()
-
+    row = query_one("SELECT email FROM users WHERE id=%s", (session["user_id"],))
     return jsonify({
         "id": session["user_id"],
         "name": session["user_name"],
@@ -282,1125 +284,455 @@ def user_info():
     })
 
 
-# -------------------------------
-# START APP
-# -------------------------------
-
 # ============================================
 # SUBJECT MANAGEMENT
 # ============================================
-
 @app.route("/api/subjects", methods=["GET", "POST"])
 @login_required
 def subjects():
-
-    conn = get_db()
-    cur = conn.cursor()
+    uid = session["user_id"]
 
     if request.method == "POST":
-
-        data = request.get_json()
-
-        subject = data.get("subject")
+        data = request.get_json(silent=True) or {}
+        subject = (data.get("subject") or "").strip()
         difficulty = data.get("difficulty")
         hours = data.get("hours")
 
         if not subject:
             return jsonify({"success": False, "message": "Subject required"}), 400
 
-        cur.execute("""
-        INSERT INTO subjects(user_id,subject_name,difficulty,study_hours)
-        VALUES(?,?,?,?)
-        """, (
-            session["user_id"],
-            subject,
-            difficulty,
-            hours
-        ))
+        execute(
+            "INSERT INTO subjects(user_id, subject_name, difficulty, study_hours) VALUES(%s, %s, %s, %s)",
+            (uid, subject, difficulty, hours)
+        )
+        return jsonify({"success": True, "message": "Subject Added"})
 
+    rows = query_all("SELECT * FROM subjects WHERE user_id=%s ORDER BY id", (uid,))
+    return jsonify([dict(x) for x in rows])
+
+
+@app.route("/api/subjects/<int:id>", methods=["PUT", "DELETE"])
+@login_required
+def subject_by_id(id):
+    uid = session["user_id"]
+
+    if request.method == "DELETE":
+        execute("DELETE FROM subjects WHERE id=%s AND user_id=%s", (id, uid))
+        return jsonify({"success": True})
+
+    data = request.get_json(silent=True) or {}
+    execute("""
+        UPDATE subjects
+        SET subject_name=%s, difficulty=%s, study_hours=%s
+        WHERE id=%s AND user_id=%s
+    """, (data.get("subject"), data.get("difficulty"), data.get("hours"), id, uid))
+    return jsonify({"success": True, "message": "Subject Updated"})
+
+
+@app.route("/api/subjects/search")
+@login_required
+def search_subjects():
+    keyword = request.args.get("q", "")
+    rows = query_all("""
+        SELECT * FROM subjects
+        WHERE user_id=%s AND subject_name ILIKE %s
+        ORDER BY id
+    """, (session["user_id"], f"%{keyword}%"))
+    return jsonify([dict(x) for x in rows])
+
+
+# ============================================
+# SMART TIMETABLE
+# ============================================
+def generate_timetable(user_id):
+    subjects_rows = query_all("SELECT * FROM subjects WHERE user_id=%s ORDER BY id", (user_id,))
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM timetable WHERE user_id=%s", (user_id,))
+            days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+            current_day = 0
+            start_hour = 17
+
+            for subject in subjects_rows:
+                try:
+                    hrs = float(subject["study_hours"] or 1)
+                except (TypeError, ValueError):
+                    hrs = 1
+
+                if subject["difficulty"] == "Hard":
+                    hrs += 1
+                hrs = min(hrs, 3)
+
+                start = start_hour
+                end = start + hrs
+                start_text = f"{int(start):02d}:00"
+                if float(end).is_integer():
+                    end_text = f"{int(end):02d}:00"
+                else:
+                    end_text = f"{int(end):02d}:30"
+
+                cur.execute("""
+                    INSERT INTO timetable(user_id, day, start_time, end_time, subject)
+                    VALUES(%s, %s, %s, %s, %s)
+                """, (user_id, days[current_day], start_text, end_text, subject["subject_name"]))
+
+                current_day = (current_day + 1) % len(days)
         conn.commit()
-
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
         conn.close()
 
-        return jsonify({
-            "success": True,
-            "message": "Subject Added"
-        })
-
-    cur.execute("""
-    SELECT *
-    FROM subjects
-    WHERE user_id=?
-    """, (session["user_id"],))
-
-    rows = [dict(x) for x in cur.fetchall()]
-
-    conn.close()
-
-    return jsonify(rows)
-
-
-# ============================================
-# DELETE SUBJECT
-# ============================================
-
-@app.route("/api/subjects/<int:id>", methods=["DELETE"])
-@login_required
-def delete_subject(id):
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    DELETE FROM subjects
-    WHERE id=?
-    AND user_id=?
-    """, (
-        id,
-        session["user_id"]
-    ))
-
-    conn.commit()
-
-    conn.close()
-
-    return jsonify({
-        "success": True
-    })
-
-
-# ============================================
-# SMART TIMETABLE GENERATOR
-# ============================================
-
-def generate_timetable(user_id):
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT *
-    FROM subjects
-    WHERE user_id=?
-    """, (user_id,))
-
-    subjects = cur.fetchall()
-
-    cur.execute("""
-    DELETE FROM timetable
-    WHERE user_id=?
-    """, (user_id,))
-
-    conn.commit()
-
-    days = [
-        "Monday",
-        "Tuesday",
-        "Wednesday",
-        "Thursday",
-        "Friday",
-        "Saturday"
-    ]
-
-    current_day = 0
-
-    start_hour = 17
-
-    for subject in subjects:
-
-        hrs = subject["study_hours"] or 1
-
-        if subject["difficulty"] == "Hard":
-            hrs += 1
-
-        if hrs > 3:
-            hrs = 3
-
-        start = start_hour
-        end = start + hrs
-
-        cur.execute("""
-        INSERT INTO timetable(
-        user_id,
-        day,
-        start_time,
-        end_time,
-        subject
-        )
-        VALUES(?,?,?,?,?)
-        """, (
-            user_id,
-            days[current_day],
-            f"{start}:00",
-            f"{end}:00",
-            subject["subject_name"]
-        ))
-
-        current_day += 1
-
-        if current_day >= len(days):
-            current_day = 0
-
-    conn.commit()
-
-    conn.close()
-
-
-# ============================================
-# GENERATE TIMETABLE
-# ============================================
 
 @app.route("/api/timetable/generate", methods=["POST"])
 @login_required
 def create_timetable():
-
     generate_timetable(session["user_id"])
-
-    return jsonify({
-        "success": True,
-        "message": "Timetable Generated Successfully"
-    })
+    return jsonify({"success": True, "message": "Timetable Generated Successfully"})
 
 
-# ============================================
-# VIEW TIMETABLE
-# ============================================
-
-@app.route("/api/timetable")
+@app.route("/api/timetable", methods=["GET", "DELETE"])
 @login_required
 def timetable():
+    uid = session["user_id"]
+    if request.method == "DELETE":
+        execute("DELETE FROM timetable WHERE user_id=%s", (uid,))
+        return jsonify({"success": True})
 
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT *
-    FROM timetable
-    WHERE user_id=?
-    ORDER BY
-    day,
-    start_time
-    """, (session["user_id"],))
-
-    data = [dict(x) for x in cur.fetchall()]
-
-    conn.close()
-
-    return jsonify(data)
+    rows = query_all("""
+        SELECT * FROM timetable
+        WHERE user_id=%s
+        ORDER BY CASE day
+            WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3
+            WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 ELSE 7 END,
+            start_time
+    """, (uid,))
+    return jsonify([dict(x) for x in rows])
 
 
-# ============================================
-# DELETE TIMETABLE
-# ============================================
-
-@app.route("/api/timetable", methods=["DELETE"])
+@app.route("/api/timetable/today")
 @login_required
-def delete_timetable():
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    DELETE FROM timetable
-    WHERE user_id=?
-    """, (session["user_id"],))
-
-    conn.commit()
-
-    conn.close()
-
-    return jsonify({
-        "success": True
-    })
+def today_timetable():
+    rows = query_all("""
+        SELECT * FROM timetable
+        WHERE user_id=%s AND day=%s
+        ORDER BY start_time
+    """, (session["user_id"], datetime.now().strftime("%A")))
+    return jsonify([dict(x) for x in rows])
 
 
-# ============================================
-# DASHBOARD API
-# ============================================
-
-@app.route("/api/dashboard")
-@login_required
-def dashboard_api():
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    user = session["user_id"]
-
-    cur.execute("SELECT COUNT(*) FROM assignments WHERE user_id=?", (user,))
-    assignments = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM homework WHERE user_id=?", (user,))
-    homework = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM exams WHERE user_id=?", (user,))
-    exams = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM timetable WHERE user_id=?", (user,))
-    timetable = cur.fetchone()[0]
-
-    cur.execute("""
-    SELECT attended,total
-    FROM attendance
-    WHERE user_id=?
-    """, (user,))
-
-    row = cur.fetchone()
-
-    attendance = 0
-
-    if row:
-
-        if row["total"] > 0:
-
-            attendance = round(
-                row["attended"] /
-                row["total"] * 100,
-                2
-            )
-
-    conn.close()
-
-    return jsonify({
-
-        "assignments": assignments,
-        "homework": homework,
-        "exams": exams,
-        "timetable": timetable,
-        "attendance": attendance,
-        "username": session["user_name"]
-
-    })
 # ============================================
 # ASSIGNMENTS
 # ============================================
-
 @app.route("/api/assignments", methods=["GET", "POST"])
 @login_required
 def assignments():
-
-    conn = get_db()
-    cur = conn.cursor()
-
+    uid = session["user_id"]
     if request.method == "POST":
-
-        data = request.get_json()
-
+        data = request.get_json(silent=True) or {}
         title = data.get("title")
         subject = data.get("subject")
         due_date = data.get("due_date")
-
         if not title or not subject or not due_date:
-            return jsonify({
-                "success": False,
-                "message": "Please fill all fields."
-            }), 400
+            return jsonify({"success": False, "message": "Please fill all fields."}), 400
+        execute("""
+            INSERT INTO assignments(user_id,title,subject,due_date,status)
+            VALUES(%s,%s,%s,%s,%s)
+        """, (uid, title, subject, due_date, "Pending"))
+        return jsonify({"success": True, "message": "Assignment Added"})
 
-        cur.execute("""
-        INSERT INTO assignments
-        (user_id,title,subject,due_date,status)
-        VALUES(?,?,?,?,?)
-        """, (
-            session["user_id"],
-            title,
-            subject,
-            due_date,
-            "Pending"
-        ))
-
-        conn.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Assignment Added"
-        })
-
-    cur.execute("""
-    SELECT *
-    FROM assignments
-    WHERE user_id=?
-    ORDER BY due_date ASC
-    """, (session["user_id"],))
-
-    assignments = []
-
-    today = datetime.now().date()
-
-    for row in cur.fetchall():
-
+    rows = query_all("SELECT * FROM assignments WHERE user_id=%s ORDER BY due_date ASC", (uid,))
+    result = []
+    for row in rows:
         item = dict(row)
-
-        try:
-            due = datetime.strptime(
-                item["due_date"],
-                "%Y-%m-%d"
-            ).date()
-
-            item["days_left"] = (due - today).days
-            item["overdue"] = due < today
-
-        except:
-            item["days_left"] = None
-            item["overdue"] = False
-
-        assignments.append(item)
-
-    conn.close()
-
-    return jsonify(assignments)
+        item["days_left"], item["overdue"] = date_info(item.get("due_date"))
+        result.append(item)
+    return jsonify(result)
 
 
-# ============================================
-# UPDATE ASSIGNMENT
-# ============================================
-
-@app.route("/api/assignments/<int:id>", methods=["PUT"])
+@app.route("/api/assignments/<int:id>", methods=["PUT", "DELETE"])
 @login_required
-def update_assignment(id):
+def assignment_by_id(id):
+    uid = session["user_id"]
+    if request.method == "DELETE":
+        execute("DELETE FROM assignments WHERE id=%s AND user_id=%s", (id, uid))
+        return jsonify({"success": True})
 
-    data = request.get_json()
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("""
-    UPDATE assignments
-    SET
-    title=?,
-    subject=?,
-    due_date=?,
-    status=?
-    WHERE id=?
-    AND user_id=?
-    """, (
-
-        data.get("title"),
-        data.get("subject"),
-        data.get("due_date"),
-        data.get("status"),
-        id,
-        session["user_id"]
-
-    ))
-
-    conn.commit()
-    conn.close()
-
+    data = request.get_json(silent=True) or {}
+    execute("""
+        UPDATE assignments
+        SET title=%s, subject=%s, due_date=%s, status=%s
+        WHERE id=%s AND user_id=%s
+    """, (data.get("title"), data.get("subject"), data.get("due_date"), data.get("status"), id, uid))
     return jsonify({"success": True})
 
 
-# ============================================
-# DELETE ASSIGNMENT
-# ============================================
-
-@app.route("/api/assignments/<int:id>", methods=["DELETE"])
+@app.route("/api/assignments/pending")
 @login_required
-def delete_assignment(id):
-
-    conn = get_db()
-
-    conn.execute("""
-    DELETE FROM assignments
-    WHERE id=?
-    AND user_id=?
-    """, (
-        id,
-        session["user_id"]
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({"success": True})
+def pending_assignments():
+    rows = query_all("""
+        SELECT * FROM assignments
+        WHERE user_id=%s AND status='Pending'
+        ORDER BY due_date LIMIT 5
+    """, (session["user_id"],))
+    return jsonify([dict(x) for x in rows])
 
 
 # ============================================
 # HOMEWORK
 # ============================================
-
 @app.route("/api/homework", methods=["GET", "POST"])
 @login_required
 def homework():
-
-    conn = get_db()
-    cur = conn.cursor()
-
+    uid = session["user_id"]
     if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        if not data.get("title") or not data.get("subject") or not data.get("due_date"):
+            return jsonify({"success": False, "message": "Please fill all fields."}), 400
+        execute("""
+            INSERT INTO homework(user_id,title,subject,due_date,status)
+            VALUES(%s,%s,%s,%s,%s)
+        """, (uid, data.get("title"), data.get("subject"), data.get("due_date"), "Pending"))
+        return jsonify({"success": True, "message": "Homework Added"})
 
-        data = request.get_json()
-
-        cur.execute("""
-        INSERT INTO homework
-        (user_id,title,subject,due_date,status)
-        VALUES(?,?,?,?,?)
-        """, (
-
-            session["user_id"],
-            data.get("title"),
-            data.get("subject"),
-            data.get("due_date"),
-            "Pending"
-
-        ))
-
-        conn.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Homework Added"
-        })
-
-    cur.execute("""
-    SELECT *
-    FROM homework
-    WHERE user_id=?
-    ORDER BY due_date ASC
-    """, (session["user_id"],))
-
-    homework = []
-
-    today = datetime.now().date()
-
-    for row in cur.fetchall():
-
+    rows = query_all("SELECT * FROM homework WHERE user_id=%s ORDER BY due_date ASC", (uid,))
+    result = []
+    for row in rows:
         item = dict(row)
-
-        try:
-            due = datetime.strptime(
-                item["due_date"],
-                "%Y-%m-%d"
-            ).date()
-
-            item["days_left"] = (due - today).days
-            item["overdue"] = due < today
-
-        except:
-            item["days_left"] = None
-            item["overdue"] = False
-
-        homework.append(item)
-
-    conn.close()
-
-    return jsonify(homework)
+        item["days_left"], item["overdue"] = date_info(item.get("due_date"))
+        result.append(item)
+    return jsonify(result)
 
 
-# ============================================
-# UPDATE HOMEWORK
-# ============================================
-
-@app.route("/api/homework/<int:id>", methods=["PUT"])
+@app.route("/api/homework/<int:id>", methods=["PUT", "DELETE"])
 @login_required
-def update_homework(id):
+def homework_by_id(id):
+    uid = session["user_id"]
+    if request.method == "DELETE":
+        execute("DELETE FROM homework WHERE id=%s AND user_id=%s", (id, uid))
+        return jsonify({"success": True})
 
-    data = request.get_json()
-
-    conn = get_db()
-
-    conn.execute("""
-    UPDATE homework
-    SET
-    title=?,
-    subject=?,
-    due_date=?,
-    status=?
-    WHERE id=?
-    AND user_id=?
-    """, (
-
-        data.get("title"),
-        data.get("subject"),
-        data.get("due_date"),
-        data.get("status"),
-        id,
-        session["user_id"]
-
-    ))
-
-    conn.commit()
-    conn.close()
-
+    data = request.get_json(silent=True) or {}
+    execute("""
+        UPDATE homework
+        SET title=%s, subject=%s, due_date=%s, status=%s
+        WHERE id=%s AND user_id=%s
+    """, (data.get("title"), data.get("subject"), data.get("due_date"), data.get("status"), id, uid))
     return jsonify({"success": True})
 
 
-# ============================================
-# DELETE HOMEWORK
-# ============================================
-
-@app.route("/api/homework/<int:id>", methods=["DELETE"])
+@app.route("/api/homework/pending")
 @login_required
-def delete_homework(id):
+def pending_homework():
+    rows = query_all("""
+        SELECT * FROM homework
+        WHERE user_id=%s AND status='Pending'
+        ORDER BY due_date LIMIT 5
+    """, (session["user_id"],))
+    return jsonify([dict(x) for x in rows])
 
-    conn = get_db()
 
-    conn.execute("""
-    DELETE FROM homework
-    WHERE id=?
-    AND user_id=?
-    """, (
-        id,
-        session["user_id"]
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({"success": True})
 # ============================================
-# EXAM MANAGER
+# EXAMS
 # ============================================
-
 @app.route("/api/exams", methods=["GET", "POST"])
 @login_required
 def exams():
-
-    conn = get_db()
-    cur = conn.cursor()
-
+    uid = session["user_id"]
     if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        if not data.get("subject") or not data.get("exam_date"):
+            return jsonify({"success": False, "message": "Please fill all fields."}), 400
+        execute("INSERT INTO exams(user_id,subject,exam_date) VALUES(%s,%s,%s)",
+                (uid, data.get("subject"), data.get("exam_date")))
+        return jsonify({"success": True, "message": "Exam Added"})
 
-        data = request.get_json()
-
-        subject = data.get("subject")
-        exam_date = data.get("exam_date")
-
-        if not subject or not exam_date:
-            return jsonify({
-                "success": False,
-                "message": "Please fill all fields."
-            }), 400
-
-        cur.execute("""
-        INSERT INTO exams(user_id,subject,exam_date)
-        VALUES(?,?,?)
-        """, (
-            session["user_id"],
-            subject,
-            exam_date
-        ))
-
-        conn.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Exam Added"
-        })
-
-    cur.execute("""
-    SELECT *
-    FROM exams
-    WHERE user_id=?
-    ORDER BY exam_date ASC
-    """, (session["user_id"],))
-
-    exams = []
-
+    rows = query_all("SELECT * FROM exams WHERE user_id=%s ORDER BY exam_date ASC", (uid,))
+    result = []
     today = datetime.now().date()
-
-    for row in cur.fetchall():
-
-        exam = dict(row)
-
+    for row in rows:
+        item = dict(row)
         try:
-            date = datetime.strptime(
-                exam["exam_date"],
-                "%Y-%m-%d"
-            ).date()
-
-            exam["days_left"] = (date - today).days
-
-            exam["status"] = (
-                "Upcoming"
-                if date >= today
-                else "Completed"
-            )
-
-        except:
-            exam["days_left"] = None
-            exam["status"] = "Unknown"
-
-        exams.append(exam)
-
-    conn.close()
-
-    return jsonify(exams)
+            d = datetime.strptime(item["exam_date"], "%Y-%m-%d").date()
+            item["days_left"] = (d - today).days
+            item["status"] = "Upcoming" if d >= today else "Completed"
+        except (TypeError, ValueError):
+            item["days_left"] = None
+            item["status"] = "Unknown"
+        result.append(item)
+    return jsonify(result)
 
 
-# ============================================
-# UPDATE EXAM
-# ============================================
-
-@app.route("/api/exams/<int:id>", methods=["PUT"])
+@app.route("/api/exams/<int:id>", methods=["PUT", "DELETE"])
 @login_required
-def update_exam(id):
+def exam_by_id(id):
+    uid = session["user_id"]
+    if request.method == "DELETE":
+        execute("DELETE FROM exams WHERE id=%s AND user_id=%s", (id, uid))
+        return jsonify({"success": True})
 
-    data = request.get_json()
-
-    conn = get_db()
-
-    conn.execute("""
-    UPDATE exams
-    SET subject=?,
-        exam_date=?
-    WHERE id=?
-    AND user_id=?
-    """, (
-
-        data.get("subject"),
-        data.get("exam_date"),
-        id,
-        session["user_id"]
-
-    ))
-
-    conn.commit()
-    conn.close()
-
+    data = request.get_json(silent=True) or {}
+    execute("""
+        UPDATE exams SET subject=%s, exam_date=%s
+        WHERE id=%s AND user_id=%s
+    """, (data.get("subject"), data.get("exam_date"), id, uid))
     return jsonify({"success": True})
 
 
-# ============================================
-# DELETE EXAM
-# ============================================
-
-@app.route("/api/exams/<int:id>", methods=["DELETE"])
+@app.route("/api/exams/upcoming")
 @login_required
-def delete_exam(id):
-
-    conn = get_db()
-
-    conn.execute("""
-    DELETE FROM exams
-    WHERE id=?
-    AND user_id=?
-    """, (
-        id,
-        session["user_id"]
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({"success": True})
+def upcoming_exams():
+    today = datetime.now().strftime("%Y-%m-%d")
+    rows = query_all("""
+        SELECT * FROM exams
+        WHERE user_id=%s AND exam_date>=%s
+        ORDER BY exam_date LIMIT 5
+    """, (session["user_id"], today))
+    return jsonify([dict(x) for x in rows])
 
 
 # ============================================
 # ATTENDANCE
 # ============================================
-
 @app.route("/api/attendance", methods=["GET", "POST"])
 @login_required
 def attendance():
-
-    conn = get_db()
-    cur = conn.cursor()
+    uid = session["user_id"]
 
     if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        try:
+            attended = max(0, int(data.get("attended", 0)))
+            total = max(0, int(data.get("total", 0)))
+        except (TypeError, ValueError):
+            return jsonify({"success": False, "message": "Attendance values must be numbers."}), 400
 
-        data = request.get_json()
+        if attended > total:
+            return jsonify({"success": False, "message": "Attended classes cannot exceed total classes."}), 400
 
-        attended = int(data.get("attended", 0))
-        total = int(data.get("total", 0))
+        execute("""
+            INSERT INTO attendance(user_id, attended, total)
+            VALUES(%s,%s,%s)
+            ON CONFLICT (user_id)
+            DO UPDATE SET attended=EXCLUDED.attended, total=EXCLUDED.total
+        """, (uid, attended, total))
+        return jsonify({"success": True, "message": "Attendance Saved"})
 
-        cur.execute("""
-        SELECT id
-        FROM attendance
-        WHERE user_id=?
-        """, (session["user_id"],))
-
-        row = cur.fetchone()
-
-        if row:
-
-            cur.execute("""
-            UPDATE attendance
-            SET attended=?,
-                total=?
-            WHERE user_id=?
-            """, (
-
-                attended,
-                total,
-                session["user_id"]
-
-            ))
-
-        else:
-
-            cur.execute("""
-            INSERT INTO attendance(
-            user_id,
-            attended,
-            total
-            )
-            VALUES(?,?,?)
-            """, (
-
-                session["user_id"],
-                attended,
-                total
-
-            ))
-
-        conn.commit()
-
-        return jsonify({
-            "success": True,
-            "message": "Attendance Saved"
-        })
-
-    cur.execute("""
-    SELECT attended,total
-    FROM attendance
-    WHERE user_id=?
-    """, (session["user_id"],))
-
-    row = cur.fetchone()
-
-    conn.close()
-
+    row = query_one("SELECT attended,total FROM attendance WHERE user_id=%s", (uid,))
     if not row:
+        return jsonify({"attended": 0, "total": 0, "percentage": 0, "need": 0, "status": "No Data"})
 
-        return jsonify({
-            "attended": 0,
-            "total": 0,
-            "percentage": 0,
-            "need": 0,
-            "status": "No Data"
-        })
-
-    attended = row["attended"]
-    total = row["total"]
-
-    percentage = 0
-
-    if total > 0:
-        percentage = round(attended / total * 100, 2)
+    attended = int(row["attended"] or 0)
+    total = int(row["total"] or 0)
+    percentage = round(attended / total * 100, 2) if total else 0
 
     need = 0
-
     if percentage < 75:
-
-        while True:
-
-            attended += 1
-            total += 1
-            need += 1
-
-            if attended / total >= 0.75:
-                break
+        # Minimum future classes needed to reach 75%.
+        #  (attended + n) / (total + n) >= 0.75
+        need = max(0, (3 * total - 4 * attended + 2) // 1)
+        # Exact integer ceiling of (3*total - 4*attended) / 1 for 75%.
+        if total:
+            numerator = 3 * total - 4 * attended
+            need = max(0, numerator)
 
     return jsonify({
-
-        "attended": row["attended"],
-        "total": row["total"],
+        "attended": attended,
+        "total": total,
         "percentage": percentage,
         "need": need,
-        "status":
-            "Good"
-            if percentage >= 75
-            else "Below 75%"
-
+        "status": "Good" if percentage >= 75 else "Below 75%"
     })
 
 
 # ============================================
-# DASHBOARD SUMMARY
+# DASHBOARD APIs
 # ============================================
+def attendance_percentage(uid):
+    row = query_one("SELECT attended,total FROM attendance WHERE user_id=%s", (uid,))
+    if not row or not row["total"]:
+        return 0
+    return round(row["attended"] / row["total"] * 100, 2)
+
+
+@app.route("/api/dashboard")
+@login_required
+def dashboard_api():
+    uid = session["user_id"]
+    counts = {}
+    for table in ["assignments", "homework", "exams", "timetable"]:
+        row = query_one(f"SELECT COUNT(*) AS count FROM {table} WHERE user_id=%s", (uid,))
+        counts[table] = int(row["count"])
+
+    return jsonify({
+        **counts,
+        "attendance": attendance_percentage(uid),
+        "username": session["user_name"]
+    })
+
 
 @app.route("/api/dashboard/summary")
 @login_required
 def dashboard_summary():
-
-    conn = get_db()
-    cur = conn.cursor()
-
     uid = session["user_id"]
-
-    tables = [
-        "subjects",
-        "assignments",
-        "homework",
-        "exams",
-        "timetable"
-    ]
-
     data = {}
-
-    for table in tables:
-
-        cur.execute(
-            f"SELECT COUNT(*) FROM {table} WHERE user_id=?",
-            (uid,)
-        )
-
-        data[table] = cur.fetchone()[0]
-
-    cur.execute("""
-    SELECT attended,total
-    FROM attendance
-    WHERE user_id=?
-    """, (uid,))
-
-    row = cur.fetchone()
-
-    if row and row["total"] > 0:
-
-        attendance = round(
-            row["attended"] /
-            row["total"] * 100,
-            2
-        )
-
-    else:
-        attendance = 0
-
-    conn.close()
-
-    data["attendance"] = attendance
+    for table in ["subjects", "assignments", "homework", "exams", "timetable"]:
+        row = query_one(f"SELECT COUNT(*) AS count FROM {table} WHERE user_id=%s", (uid,))
+        data[table] = int(row["count"])
+    data["attendance"] = attendance_percentage(uid)
     data["username"] = session["user_name"]
-
     return jsonify(data)
-# ============================================
-# UPDATE SUBJECT
-# ============================================
-
-@app.route("/api/subjects/<int:id>", methods=["PUT"])
-@login_required
-def update_subject(id):
-
-    data = request.get_json()
-
-    conn = get_db()
-
-    conn.execute("""
-    UPDATE subjects
-    SET
-        subject_name=?,
-        difficulty=?,
-        study_hours=?
-    WHERE id=?
-    AND user_id=?
-    """, (
-        data.get("subject"),
-        data.get("difficulty"),
-        data.get("hours"),
-        id,
-        session["user_id"]
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return jsonify({
-        "success": True,
-        "message": "Subject Updated"
-    })
-
-
-# ============================================
-# SEARCH SUBJECTS
-# ============================================
-
-@app.route("/api/subjects/search")
-@login_required
-def search_subjects():
-
-    keyword = request.args.get("q", "")
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT *
-    FROM subjects
-    WHERE user_id=?
-    AND subject_name LIKE ?
-    """, (
-        session["user_id"],
-        f"%{keyword}%"
-    ))
-
-    rows = [dict(x) for x in cur.fetchall()]
-
-    conn.close()
-
-    return jsonify(rows)
-
-
-# ============================================
-# TODAY'S TIMETABLE
-# ============================================
-
-@app.route("/api/timetable/today")
-@login_required
-def today_timetable():
-
-    today = datetime.now().strftime("%A")
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT *
-    FROM timetable
-    WHERE user_id=?
-    AND day=?
-    ORDER BY start_time
-    """, (
-        session["user_id"],
-        today
-    ))
-
-    timetable = [dict(x) for x in cur.fetchall()]
-
-    conn.close()
-
-    return jsonify(timetable)
-
-
-# ============================================
-# UPCOMING EXAMS
-# ============================================
-
-@app.route("/api/exams/upcoming")
-@login_required
-def upcoming_exams():
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    today = datetime.now().strftime("%Y-%m-%d")
-
-    cur.execute("""
-    SELECT *
-    FROM exams
-    WHERE user_id=?
-    AND exam_date>=?
-    ORDER BY exam_date
-    LIMIT 5
-    """, (
-        session["user_id"],
-        today
-    ))
-
-    exams = [dict(x) for x in cur.fetchall()]
-
-    conn.close()
-
-    return jsonify(exams)
-
-
-# ============================================
-# PENDING ASSIGNMENTS
-# ============================================
-
-@app.route("/api/assignments/pending")
-@login_required
-def pending_assignments():
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT *
-    FROM assignments
-    WHERE user_id=?
-    AND status='Pending'
-    ORDER BY due_date
-    LIMIT 5
-    """, (session["user_id"],))
-
-    assignments = [dict(x) for x in cur.fetchall()]
-
-    conn.close()
-
-    return jsonify(assignments)
-
-
-# ============================================
-# PENDING HOMEWORK
-# ============================================
-
-@app.route("/api/homework/pending")
-@login_required
-def pending_homework():
-
-    conn = get_db()
-
-    cur = conn.cursor()
-
-    cur.execute("""
-    SELECT *
-    FROM homework
-    WHERE user_id=?
-    AND status='Pending'
-    ORDER BY due_date
-    LIMIT 5
-    """, (session["user_id"],))
-
-    homework = [dict(x) for x in cur.fetchall()]
-
-    conn.close()
-
-    return jsonify(homework)
 
 
 # ============================================
 # HEALTH CHECK
 # ============================================
-
 @app.route("/api/status")
 def status():
-
-    return jsonify({
-
-        "status": "online",
-        "application": "Student Timetable AI",
-        "version": "2.0"
-
-    })
+    try:
+        query_one("SELECT 1 AS ok")
+        return jsonify({
+            "status": "online",
+            "database": "postgresql",
+            "application": "Student Timetable AI",
+            "version": "3.0"
+        })
+    except Exception as exc:
+        return jsonify({
+            "status": "online",
+            "database": "error",
+            "application": "Student Timetable AI",
+            "version": "3.0",
+            "error": str(exc) if app.debug else "Database connection failed"
+        }), 503
 
 
 # ============================================
 # ERROR HANDLERS
 # ============================================
-
 @app.errorhandler(404)
 def not_found(error):
-
-    return jsonify({
-        "success": False,
-        "message": "Page Not Found"
-    }), 404
+    return jsonify({"success": False, "message": "Page Not Found"}), 404
 
 
 @app.errorhandler(500)
 def internal_error(error):
-
-    return jsonify({
-        "success": False,
-        "message": "Internal Server Error"
-    }), 500
+    # Keep the response JSON, but do not expose database credentials/details in production.
+    return jsonify({"success": False, "message": "Internal Server Error"}), 500
 
 
-# ============================================
-# START APP
-# ============================================
+# Initialize PostgreSQL when the Flask process starts.
+# This is intentionally outside if __name__ == '__main__' so it also works with Gunicorn on Render.
+try:
+    init_db()
+except Exception as startup_error:
+    # Do not prevent Gunicorn from starting if PostgreSQL is temporarily unavailable.
+    # The first database request will return an appropriate error instead.
+    print(f"[DATABASE STARTUP WARNING] {startup_error}")
+
 
 if __name__ == "__main__":
-
-    init_db()
-
-    app.run(
-        debug=True
-    )
+    app.run(debug=os.environ.get("FLASK_DEBUG", "0") == "1", host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
